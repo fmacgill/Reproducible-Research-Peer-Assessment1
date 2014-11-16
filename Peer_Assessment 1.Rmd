@@ -1,0 +1,95 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+## Loading and preprocessing the data
+
+```{r, results = "hide"}
+library(plyr)
+library(ggplot2)
+library(gridExtra)
+setwd("/Users/kaztamaru/Desktop/デスクトップ/R/Cousera/Reproducible Research/Peer Assessment 1")
+DT <- read.csv("activity.csv", stringsAsFactors = FALSE)
+DT$date <- as.Date(DT$date, "%Y-%m-%d")
+```
+
+## What is mean total number of steps taken per day?
+```{r}
+DF1 <- ddply(DT[!is.na(DT$steps), ], .(date), summarize, steps = sum(steps))
+g1 <- ggplot(data = DF1, aes(x = steps)) +
+  geom_histogram(binwidth = 5000, fill = 5, alpha = 0.5, color = 1) +
+  ggtitle("Histogram of the total number of steps taken each day")
+g1
+```
+
+```{r, echo=FALSE}
+cat("mean of total number of steps taken per day =", mean(DF1$steps), "\n")
+cat("median of total number of steps taken per day =", median(DF1$steps), "\n")
+```
+
+## What is the average daily activity pattern?
+```{r}
+DF2 <- ddply(DT[!is.na(DT$steps), ], .(interval), summarize, steps = mean(steps))
+g2 <- ggplot(data = DF2, aes(x = interval, y = steps, group = 1)) +
+  geom_line() + 
+  xlab("5-minute interval") +
+  ggtitle("The average daily activity pattern")
+g2
+```
+
+```{r, echo=FALSE}
+cat("Interval of the maximum number of steps  = ",
+    DF2$interval[DF2$steps == max(DF2$steps)],   "\n")
+cat("Steps of the maximum number of steps  =",
+    DF2$steps[DF2$steps == max(DF2$steps)],  "\n")
+```
+
+## Imputing missing values
+
+Set the mean for that 5-minute interval
+
+```{r}
+interval <- as.numeric(dimnames(table(DT$interval))[[1]])
+DT_NEW <- DT
+for(i in c(1:length(interval))){
+  DT_NEW$steps[is.na(DT_NEW$steps) & DT_NEW$interval == interval[i]] <-
+    DF2$steps[DF2$interval == interval[i]]
+}
+DF3 <- ddply(DT_NEW, .(date), summarize, steps = sum(steps))
+g3 <- ggplot(data = DF3, aes(x = steps)) +
+  geom_histogram(binwidth = 5000, fill = 5, alpha = 0.5, color = 1) +
+  ggtitle("Histogram of the total number of steps taken each day
+          (Imputing missing values)")
+grid.arrange(g1, g3)
+```
+
+```{r, echo=FALSE}
+cat("mean of total number of steps taken per day =", mean(DF3$steps), "\n")
+cat("median of total number of steps taken per day =", median(DF3$steps), "\n")
+```
+
+Median of total number of steps taken per day become bigger.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+DT_NEW$weekday <- ifelse(weekdays(DT_NEW$date) == "日曜日" |
+                            weekdays(DT_NEW$date) == "土曜日", "weekend", "weekday")
+DF4 <- ddply(DT_NEW, .(interval, weekday), summarize, steps = mean(steps))
+g4 <- ggplot(data = DF4, aes(x = interval, y = steps, group = weekday)) +
+  geom_line() + 
+  xlab("5-minute interval") +
+  facet_grid(weekday ~ .) +
+  ggtitle("The average daily activity pattern")
+g4
+```
+
+```{r, echo=FALSE}
+cat("Interval of the maximum number of steps(weekday)  = ",
+    DF4$interval[DF4$steps == max(DF4$steps[DF4$weekday == "weekday"])],   "\n")
+cat("Interval of the maximum number of steps(weekend)  = ",
+    DF4$interval[DF4$steps == max(DF4$steps[DF4$weekday == "weekend"])],   "\n")
+```
